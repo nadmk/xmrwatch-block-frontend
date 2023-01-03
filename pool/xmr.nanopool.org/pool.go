@@ -81,7 +81,7 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 			blocks = append(blocks, pool.Block{
 				Id:        b.Hash,
 				Height:    b.Height,
-				Reward:    uint64(b.Value * 10000000000),
+				Reward:    uint64(b.Value * 1000000000000),
 				Timestamp: b.Ts * 1000,
 			})
 		}
