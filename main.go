@@ -8,6 +8,7 @@ import (
 	c3pool_org "monero-blocks/pool/c3pool.org"
 	monero_hashvault_pro "monero-blocks/pool/monero.hashvault.pro"
 	moneroocean_stream "monero-blocks/pool/moneroocean.stream"
+	supportxmr_com "monero-blocks/pool/supportxmr.com"
 	xmr_2miners_com "monero-blocks/pool/xmr.2miners.com"
 	xmr_nanopool_org "monero-blocks/pool/xmr.nanopool.org"
 	xmrpool_eu "monero-blocks/pool/xmrpool.eu"
@@ -22,6 +23,7 @@ func main() {
 	flag.Parse()
 
 	pools := []pool.Pool{
+		supportxmr_com.New(),
 		monero_hashvault_pro.New(),
 		xmr_nanopool_org.New(),
 		xmr_2miners_com.New(),
@@ -87,7 +89,7 @@ func main() {
 		if smallIndex == -1 {
 			break
 		}
-		csvFile.Write([]string{strconv.FormatUint(allBlocks[smallIndex][0].Height, 10), allBlocks[smallIndex][0].Id.String(), strconv.FormatUint(allBlocks[smallIndex][0].Height, 10), strconv.FormatUint(allBlocks[smallIndex][0].Height, 10), pools[smallIndex].Name()})
+		csvFile.Write([]string{strconv.FormatUint(allBlocks[smallIndex][0].Height, 10), allBlocks[smallIndex][0].Id.String(), strconv.FormatUint(allBlocks[smallIndex][0].Timestamp, 10), strconv.FormatUint(allBlocks[smallIndex][0].Reward, 10), pools[smallIndex].Name()})
 		allBlocks[smallIndex] = allBlocks[smallIndex][1:]
 	}
 
