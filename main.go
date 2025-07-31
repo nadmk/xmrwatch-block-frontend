@@ -12,7 +12,6 @@ import (
 	moneroocean_stream "monero-blocks/pool/moneroocean.stream"
 	"monero-blocks/pool/p2pool"
 	supportxmr_com "monero-blocks/pool/supportxmr.com"
-	xmr_2miners_com "monero-blocks/pool/xmr.2miners.com"
 	xmr_nanopool_org "monero-blocks/pool/xmr.nanopool.org"
 	xmrpool_eu "monero-blocks/pool/xmrpool.eu"
 	"os"
@@ -31,7 +30,6 @@ func main() {
 		supportxmr_com.New(),
 		monero_hashvault_pro.New(),
 		xmr_nanopool_org.New(),
-		xmr_2miners_com.New(),
 		xmrpool_eu.New(),
 		c3pool_org.New(),
 		moneroocean_stream.New(),
