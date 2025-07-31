@@ -64,7 +64,7 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 			Id:        b.MainBlock.Id,
 			Height:    b.MainBlock.Height,
 			Reward:    b.MainBlock.Reward,
-			Timestamp: b.MainBlock.Timestamp,
+			Timestamp: b.MainBlock.Timestamp * 1000,
 		})
 	}
 
