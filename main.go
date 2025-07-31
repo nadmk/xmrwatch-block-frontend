@@ -8,6 +8,7 @@ import (
 	c3pool_org "monero-blocks/pool/c3pool.org"
 	monero_hashvault_pro "monero-blocks/pool/monero.hashvault.pro"
 	moneroocean_stream "monero-blocks/pool/moneroocean.stream"
+	"monero-blocks/pool/p2pool"
 	supportxmr_com "monero-blocks/pool/supportxmr.com"
 	xmr_2miners_com "monero-blocks/pool/xmr.2miners.com"
 	xmr_nanopool_org "monero-blocks/pool/xmr.nanopool.org"
@@ -30,6 +31,18 @@ func main() {
 		xmrpool_eu.New(),
 		c3pool_org.New(),
 		moneroocean_stream.New(),
+
+		// main
+		p2pool.New("https://p2pool.observer"),
+		p2pool.New("https://old.p2pool.observer"),
+		p2pool.New("https://old-old.p2pool.observer"),
+
+		// mini
+		p2pool.New("https://mini.p2pool.observer"),
+		p2pool.New("https://old-mini.p2pool.observer"),
+
+		// nano
+		p2pool.New("https://nano.p2pool.observer"),
 	}
 
 	var wg sync.WaitGroup
