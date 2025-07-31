@@ -51,13 +51,13 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 	}
 
 	<-p.throttler
-	response, err := http.DefaultClient.Get(fmt.Sprintf("https://api.c3pool.org/pool/blocks?page=%d&limit=500", page))
+	response, err := http.DefaultClient.Get(fmt.Sprintf("https://api.c3pool.org/pool/blocks?page=%d&limit=9999", page))
 	if err != nil {
 		return nil, nil
 	}
 	defer response.Body.Close()
 
-	blockData := make([]blockJson, 0, 500)
+	blockData := make([]blockJson, 0, 9999)
 
 	if data, err := io.ReadAll(response.Body); err != nil {
 		return nil, nil

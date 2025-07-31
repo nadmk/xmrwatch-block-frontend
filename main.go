@@ -8,6 +8,7 @@ import (
 	"log"
 	"monero-blocks/pool"
 	c3pool_org "monero-blocks/pool/c3pool.org"
+	kryptex_com "monero-blocks/pool/kryptex.com"
 	monero_hashvault_pro "monero-blocks/pool/monero.hashvault.pro"
 	moneroocean_stream "monero-blocks/pool/moneroocean.stream"
 	"monero-blocks/pool/p2pool"
@@ -33,6 +34,7 @@ func main() {
 		xmrpool_eu.New(),
 		c3pool_org.New(),
 		moneroocean_stream.New(),
+		kryptex_com.New(),
 
 		// main
 		p2pool.New("https://p2pool.observer"),
