@@ -53,18 +53,17 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 	var blocks []pool.Block
 
 	for _, b := range stats.LastBlocksFound {
-		if b.Kind == "BLOCK" {
-			hash, err := pool.HashFromString(b.Hash)
-			if err != nil {
-				continue
-			}
-			blocks = append(blocks, pool.Block{
-				Id:        hash,
-				Height:    b.Height,
-				Reward:    0,
-				Timestamp: b.Date * 1000,
-			})
+		hash, err := pool.HashFromString(b.Hash)
+		if err != nil {
+			continue
 		}
+		blocks = append(blocks, pool.Block{
+			Id:        hash,
+			Height:    b.Height,
+			Reward:    0,
+			Timestamp: b.Date * 1000,
+			Valid:     b.Kind == "BLOCK",
+		})
 	}
 
 	if len(blocks) == 0 {

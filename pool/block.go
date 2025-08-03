@@ -5,4 +5,5 @@ type Block struct {
 	Height    uint64
 	Reward    uint64
 	Timestamp uint64
+	Valid     bool
 }

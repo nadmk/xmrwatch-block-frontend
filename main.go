@@ -24,6 +24,7 @@ import (
 func main() {
 	scanDownToHeight := flag.Uint64("height", 2688888, "Height at which scans will stop from the tip. Defaults to v15 upgrade.")
 	csvOutput := flag.String("output", "blocks.csv", "CSV blocks output file")
+	hideNotValid := flag.Bool("only-valid", false, "Do not output the blocks that are marked not valid by pools")
 
 	flag.Parse()
 
@@ -65,7 +66,7 @@ func main() {
 			csvr := csv.NewReader(f)
 
 			for {
-				// "Height", "Id", "Timestamp", "Reward", "Pool"
+				// "Height", "Id", "Timestamp", "Reward", "Pool", "Valid"
 				r, err := csvr.Read()
 				if errors.Is(err, io.EOF) {
 					break
@@ -93,11 +94,18 @@ func main() {
 						continue
 					}
 
+					valid := true
+
+					if len(r) > 5 {
+						valid, _ = strconv.ParseBool(r[5])
+					}
+
 					allBlocks[i] = append(allBlocks[i], pool.Block{
 						Height:    height,
 						Id:        id,
 						Timestamp: timestamp,
 						Reward:    reward,
+						Valid:     valid,
 					})
 				}
 			}
@@ -163,7 +171,7 @@ func main() {
 	csvFile := csv.NewWriter(f)
 	defer csvFile.Flush()
 
-	csvFile.Write([]string{"Height", "Id", "Timestamp", "Reward", "Pool"})
+	csvFile.Write([]string{"Height", "Id", "Timestamp", "Reward", "Pool", "Valid"})
 
 	for i := range allBlocks {
 		slices.SortFunc(allBlocks[i], func(a, b pool.Block) int {
@@ -185,7 +193,18 @@ func main() {
 		if smallIndex == -1 {
 			break
 		}
-		csvFile.Write([]string{strconv.FormatUint(allBlocks[smallIndex][0].Height, 10), allBlocks[smallIndex][0].Id.String(), strconv.FormatUint(allBlocks[smallIndex][0].Timestamp, 10), strconv.FormatUint(allBlocks[smallIndex][0].Reward, 10), pools[smallIndex].Name()})
+
+		if !*hideNotValid || allBlocks[smallIndex][0].Valid {
+			csvFile.Write([]string{
+				strconv.FormatUint(allBlocks[smallIndex][0].Height, 10),
+				allBlocks[smallIndex][0].Id.String(),
+				strconv.FormatUint(allBlocks[smallIndex][0].Timestamp, 10),
+				strconv.FormatUint(allBlocks[smallIndex][0].Reward, 10),
+				pools[smallIndex].Name(),
+				strconv.FormatBool(allBlocks[smallIndex][0].Valid),
+			})
+		}
+
 		allBlocks[smallIndex] = allBlocks[smallIndex][1:]
 	}
 	csvFile.Flush()

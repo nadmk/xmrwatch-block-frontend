@@ -81,12 +81,14 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 		hash, _ := pool.HashFromString(pieces[0])
 		ts, _ := strconv.ParseUint(pieces[1], 10, 0)
 		blockHeight, _ := strconv.ParseUint(blockData[i+1], 10, 0)
+		orphaned := pieces[4] != "0"
 		reward, _ := strconv.ParseUint(pieces[5], 10, 0)
 		blocks = append(blocks, pool.Block{
 			Id:        hash,
 			Height:    blockHeight,
 			Reward:    reward,
 			Timestamp: ts * 1000,
+			Valid:     orphaned,
 		})
 	}
 

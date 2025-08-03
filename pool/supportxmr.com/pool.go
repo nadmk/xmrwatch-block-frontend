@@ -74,12 +74,13 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 		if b.Height < t.height {
 			start = true
 		}
-		if start && b.Valid {
+		if start {
 			blocks = append(blocks, pool.Block{
 				Id:        b.Hash,
 				Height:    b.Height,
 				Reward:    b.Value,
 				Timestamp: b.Ts,
+				Valid:     b.Valid,
 			})
 		}
 		if b.Hash == t.id {
