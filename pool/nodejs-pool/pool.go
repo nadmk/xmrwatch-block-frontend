@@ -28,6 +28,13 @@ type blockJson struct {
 	Valid  bool      `json:"valid"`
 	Value  uint64    `json:"value"`
 }
+type blockJson2 struct {
+	Ts     uint64    `json:"ts,string"`
+	Hash   pool.Hash `json:"hash"`
+	Height uint64    `json:"height"`
+	Valid  bool      `json:"valid"`
+	Value  uint64    `json:"value,string"`
+}
 
 func New(apiUrl, name string) *Pool {
 	return &Pool{
@@ -67,38 +74,74 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 		return nil, nil
 	} else {
 		if err = json.Unmarshal(data, &blockData); err != nil {
-			return nil, nil
-		}
-	}
 
-	var blocks []pool.Block
+			blockData2 := make([]blockJson2, 0, 500)
+			if err = json.Unmarshal(data, &blockData2); err != nil {
+				return nil, nil
+			}
 
-	start := t.id == pool.ZeroHash
-	for _, b := range blockData {
-		if b.Height < t.height {
-			start = true
-		}
-		if start {
-			blocks = append(blocks, pool.Block{
-				Id:        b.Hash,
-				Height:    b.Height,
-				Reward:    b.Value,
-				Timestamp: b.Ts,
-				Valid:     b.Valid,
-			})
-		}
-		if b.Hash == t.id {
-			start = true
-		}
-	}
+			var blocks []pool.Block
 
-	if len(blocks) == 0 {
-		return nil, nil
-	}
+			start := t.id == pool.ZeroHash
+			for _, b := range blockData2 {
+				if b.Height < t.height {
+					start = true
+				}
+				if start {
+					blocks = append(blocks, pool.Block{
+						Id:        b.Hash,
+						Height:    b.Height,
+						Reward:    b.Value,
+						Timestamp: b.Ts,
+						Valid:     b.Valid,
+					})
+				}
+				if b.Hash == t.id {
+					start = true
+				}
+			}
 
-	return blocks, &pagingToken{
-		id:     blocks[len(blocks)-1].Id,
-		page:   page + 1,
-		height: blocks[len(blocks)-1].Height,
+			if len(blocks) == 0 {
+				return nil, nil
+			}
+
+			return blocks, &pagingToken{
+				id:     blocks[len(blocks)-1].Id,
+				page:   page + 1,
+				height: blocks[len(blocks)-1].Height,
+			}
+
+		} else {
+			var blocks []pool.Block
+
+			start := t.id == pool.ZeroHash
+			for _, b := range blockData {
+				if b.Height < t.height {
+					start = true
+				}
+				if start {
+					blocks = append(blocks, pool.Block{
+						Id:        b.Hash,
+						Height:    b.Height,
+						Reward:    b.Value,
+						Timestamp: b.Ts,
+						Valid:     b.Valid,
+					})
+				}
+				if b.Hash == t.id {
+					start = true
+				}
+			}
+
+			if len(blocks) == 0 {
+				return nil, nil
+			}
+
+			return blocks, &pagingToken{
+				id:     blocks[len(blocks)-1].Id,
+				page:   page + 1,
+				height: blocks[len(blocks)-1].Height,
+			}
+		}
 	}
 }
