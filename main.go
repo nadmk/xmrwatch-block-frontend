@@ -8,6 +8,7 @@ import (
 	"log"
 	"monero-blocks/pool"
 	c3pool_org "monero-blocks/pool/c3pool.org"
+	cryptonote_pool "monero-blocks/pool/cryptonote-pool"
 	kryptex_com "monero-blocks/pool/kryptex.com"
 	monero_hashvault_pro "monero-blocks/pool/monero.hashvault.pro"
 	moneroocean_stream "monero-blocks/pool/moneroocean.stream"
@@ -33,11 +34,34 @@ func main() {
 		supportxmr_com.New(),
 		monero_hashvault_pro.New(),
 		xmr_nanopool_org.New(),
-		xmrpool_eu.New(),
+		kryptex_com.New(),
+
 		c3pool_org.New(),
 		moneroocean_stream.New(),
-		kryptex_com.New(),
+		nodejs_pool.New("https://api.skypool.xyz", "skypool.xyz"),
+		nodejs_pool.New("https://np-api.monerod.org", "monerod.org"),
 		nodejs_pool.New("https://pool.xmr.pt/api", "pool.xmr.pt"),
+		nodejs_pool.New("https://bohemianpool.com/api", "bohemianpool.com"),
+		nodejs_pool.New("https://xmr.gntl.uk/api", "xmr.gntl.uk"),
+
+		xmrpool_eu.New(),
+		cryptonote_pool.New("https://monero.herominers.com/api", "monero.herominers.com"),
+		cryptonote_pool.New("https://monerohash.com/api", "monerohash.com"),
+		cryptonote_pool.New("https://fastpool.xyz/api-xmr", "fastpool.xyz"),
+		cryptonote_pool.New("https://xmr.zeropool.io:8119", "xmr.zeropool.io"),
+		cryptonote_pool.New("https://monero.fairhash.org/api", "monero.fairhash.org"),
+
+		// TODO: pool.rplant.xyz
+		// https://pool.rplant.xyz/api2/poolminer2/monero/0/0
+
+		// TODO: xmr.solopool.org + miner attribution
+		// https://xmr.solopool.org/api/blocks
+
+		// TODO: mining-dutch.nl
+		// https://www.mining-dutch.nl/pools/monero.php?page=api&action=getdashboarddata
+
+		// TODO: zergpool.com
+		// https://zergpool.com/api/blocks?pageIndex=0&pageSize=10&coin=XMR
 
 		// main
 		p2pool.New("https://p2pool.observer"),

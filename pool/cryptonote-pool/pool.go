@@ -1,11 +1,14 @@
-package nodejs_pool
+package cryptonote_pool
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"monero-blocks/pool"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -16,9 +19,8 @@ type Pool struct {
 }
 
 type pagingToken struct {
-	page   uint64
-	id     pool.Hash
 	height uint64
+	id     pool.Hash
 }
 
 type blockJson struct {
@@ -46,48 +48,66 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 	var t *pagingToken
 	var ok bool
 
-	var page uint64
-
+	var height uint64 = math.MaxInt32
 	if t, ok = token.(*pagingToken); token != nil && ok {
-		page = t.page
+		height = t.height
 	} else {
 		t = &pagingToken{}
 	}
 
 	<-p.throttler
-	response, err := http.DefaultClient.Get(fmt.Sprintf(p.apiUrl+"/pool/blocks?page=%d&limit=500", page))
+	response, err := http.DefaultClient.Get(fmt.Sprintf(p.apiUrl+"/get_blocks?height=%d", height))
 	if err != nil {
 		return nil, nil
 	}
 	defer response.Body.Close()
 
-	blockData := make([]blockJson, 0, 500)
+	var blockData []string
 
 	if data, err := io.ReadAll(response.Body); err != nil {
 		return nil, nil
 	} else {
-		if err = json.Unmarshal(data, &blockData); err != nil {
+		if err = json.Unmarshal(data, &blockData); err != nil || (len(blockData)%2 != 0) {
 			return nil, nil
 		}
 	}
 
 	var blocks []pool.Block
 
+	for i := 0; i < len(blockData); i += 2 {
+		pieces := strings.Split(blockData[i], ":")
+		if len(pieces) < 4 {
+			return nil, nil
+		}
+		if len(pieces) < 6 {
+			break
+		}
+		hash, _ := pool.HashFromString(pieces[0])
+		ts, _ := strconv.ParseUint(pieces[1], 10, 0)
+		blockHeight, _ := strconv.ParseUint(blockData[i+1], 10, 0)
+		orphaned := pieces[4] != "0"
+		reward, _ := strconv.ParseUint(pieces[5], 10, 0)
+		blocks = append(blocks, pool.Block{
+			Id:        hash,
+			Height:    blockHeight,
+			Reward:    reward,
+			Timestamp: ts * 1000,
+			Valid:     orphaned,
+		})
+	}
+
 	start := t.id == pool.ZeroHash
-	for _, b := range blockData {
+	for i, b := range blocks {
 		if b.Height < t.height {
 			start = true
 		}
 		if start {
-			blocks = append(blocks, pool.Block{
-				Id:        b.Hash,
-				Height:    b.Height,
-				Reward:    b.Value,
-				Timestamp: b.Ts,
-				Valid:     b.Valid,
-			})
+			return blocks[i:], &pagingToken{
+				id:     blocks[len(blocks)-1].Id,
+				height: blocks[len(blocks)-1].Height,
+			}
 		}
-		if b.Hash == t.id {
+		if b.Id == t.id {
 			start = true
 		}
 	}
@@ -96,9 +116,8 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 		return nil, nil
 	}
 
-	return blocks, &pagingToken{
+	return nil, &pagingToken{
 		id:     blocks[len(blocks)-1].Id,
-		page:   page + 1,
 		height: blocks[len(blocks)-1].Height,
 	}
 }
