@@ -7,16 +7,12 @@ import (
 	"io"
 	"log"
 	"monero-blocks/pool"
-	c3pool_org "monero-blocks/pool/c3pool.org"
 	cryptonote_pool "monero-blocks/pool/cryptonote-pool"
 	kryptex_com "monero-blocks/pool/kryptex.com"
 	monero_hashvault_pro "monero-blocks/pool/monero.hashvault.pro"
-	moneroocean_stream "monero-blocks/pool/moneroocean.stream"
 	nodejs_pool "monero-blocks/pool/nodejs-pool"
 	"monero-blocks/pool/p2pool"
-	supportxmr_com "monero-blocks/pool/supportxmr.com"
 	xmr_nanopool_org "monero-blocks/pool/xmr.nanopool.org"
-	xmrpool_eu "monero-blocks/pool/xmrpool.eu"
 	"os"
 	"slices"
 	"strconv"
@@ -31,25 +27,34 @@ func main() {
 	flag.Parse()
 
 	pools := []pool.Pool{
-		supportxmr_com.New(),
 		monero_hashvault_pro.New(),
 		xmr_nanopool_org.New(),
 		kryptex_com.New(),
 
-		c3pool_org.New(),
-		moneroocean_stream.New(),
+		// nodejs-pool based ones
+		nodejs_pool.New("https://supportxmr.com/api", "supportxmr.com"),
+		nodejs_pool.New("https://api.c3pool.org", "c3pool.org"),
+		nodejs_pool.New("https://api.moneroocean.stream", "moneroocean.stream"),
 		nodejs_pool.New("https://api.skypool.xyz", "skypool.xyz"),
 		nodejs_pool.New("https://np-api.monerod.org", "monerod.org"),
 		nodejs_pool.New("https://pool.xmr.pt/api", "pool.xmr.pt"),
 		nodejs_pool.New("https://bohemianpool.com/api", "bohemianpool.com"),
 		nodejs_pool.New("https://xmr.gntl.uk/api", "xmr.gntl.uk"),
 
-		xmrpool_eu.New(),
-		cryptonote_pool.New("https://monero.herominers.com/api", "monero.herominers.com"),
-		cryptonote_pool.New("https://monerohash.com/api", "monerohash.com"),
-		cryptonote_pool.New("https://fastpool.xyz/api-xmr", "fastpool.xyz"),
-		cryptonote_pool.New("https://xmr.zeropool.io:8119", "xmr.zeropool.io"),
-		cryptonote_pool.New("https://monero.fairhash.org/api", "monero.fairhash.org"),
+		// cryptonote-universal-pool based ones
+		cryptonote_pool.New("https://web.xmrpool.eu:8119", "xmrpool.eu", nil),
+		cryptonote_pool.New(
+			"https://monero.herominers.com/api", "monero.herominers.com",
+			map[string]int{"hash": 0, "ts": 1, "reward": 7, "miner": 8},
+		),
+		cryptonote_pool.New("https://monerohash.com/api", "monerohash.com", nil),
+		cryptonote_pool.New("https://fastpool.xyz/api-xmr", "fastpool.xyz",
+			map[string]int{"hash": 2, "ts": 3, "orphaned": 6, "reward": 7, "miner": 1},
+		),
+		cryptonote_pool.New("https://xmr.zeropool.io:8119", "xmr.zeropool.io",
+			map[string]int{"hash": 2, "ts": 3, "orphaned": 6, "reward": 7, "miner": 1},
+		),
+		cryptonote_pool.New("https://monero.fairhash.org/api", "monero.fairhash.org", nil),
 
 		// TODO: pool.rplant.xyz
 		// https://pool.rplant.xyz/api2/poolminer2/monero/0/0
@@ -63,6 +68,7 @@ func main() {
 		// TODO: zergpool.com
 		// https://zergpool.com/api/blocks?pageIndex=0&pageSize=10&coin=XMR
 
+		// p2pool interfaces
 		// main
 		p2pool.New("https://p2pool.observer"),
 		p2pool.New("https://old.p2pool.observer"),
@@ -92,7 +98,7 @@ func main() {
 			csvr := csv.NewReader(f)
 
 			for {
-				// "Height", "Id", "Timestamp", "Reward", "Pool", "Valid"
+				// "Height", "Id", "Timestamp", "Reward", "Pool", "Valid", "Miner"
 				r, err := csvr.Read()
 				if errors.Is(err, io.EOF) {
 					break
@@ -126,12 +132,19 @@ func main() {
 						valid, _ = strconv.ParseBool(r[5])
 					}
 
+					miner := ""
+
+					if len(r) > 6 {
+						miner = r[6]
+					}
+
 					allBlocks[i] = append(allBlocks[i], pool.Block{
 						Height:    height,
 						Id:        id,
 						Timestamp: timestamp,
 						Reward:    reward,
 						Valid:     valid,
+						Miner:     miner,
 					})
 				}
 			}
@@ -164,19 +177,24 @@ func main() {
 			}
 			for {
 				tempBlocks, token = p.GetBlocks(token)
+				var finished bool
 				for _, b := range tempBlocks {
 					lastBlock = b.Height
-					if b.Height < stopHeight {
+					if b.Height < stopHeight && !finished {
 						log.Printf("[%s] Finished: reached height %d\n", p.Name(), stopHeight)
-						return
+						finished = true
 					}
-					if slices.ContainsFunc(allBlocks[pIndex], func(p pool.Block) bool {
+					if ii := slices.IndexFunc(allBlocks[pIndex], func(p pool.Block) bool {
 						return p.Id == b.Id
-					}) {
+					}); ii != -1 {
 						// already added
-						continue
+						allBlocks[pIndex][ii] = b
+					} else {
+						allBlocks[pIndex] = append(allBlocks[pIndex], b)
 					}
-					allBlocks[pIndex] = append(allBlocks[pIndex], b)
+				}
+				if finished {
+					return
 				}
 				log.Printf("[%s] at %d/%d\n", p.Name(), lastBlock, stopHeight)
 				if token == nil {
@@ -197,7 +215,7 @@ func main() {
 	csvFile := csv.NewWriter(f)
 	defer csvFile.Flush()
 
-	csvFile.Write([]string{"Height", "Id", "Timestamp", "Reward", "Pool", "Valid"})
+	csvFile.Write([]string{"Height", "Id", "Timestamp", "Reward", "Pool", "Valid", "Miner"})
 
 	for i := range allBlocks {
 		slices.SortFunc(allBlocks[i], func(a, b pool.Block) int {
@@ -220,14 +238,17 @@ func main() {
 			break
 		}
 
-		if !*hideNotValid || allBlocks[smallIndex][0].Valid {
+		b := allBlocks[smallIndex][0]
+
+		if !*hideNotValid || b.Valid {
 			csvFile.Write([]string{
-				strconv.FormatUint(allBlocks[smallIndex][0].Height, 10),
-				allBlocks[smallIndex][0].Id.String(),
-				strconv.FormatUint(allBlocks[smallIndex][0].Timestamp, 10),
-				strconv.FormatUint(allBlocks[smallIndex][0].Reward, 10),
+				strconv.FormatUint(b.Height, 10),
+				b.Id.String(),
+				strconv.FormatUint(b.Timestamp, 10),
+				strconv.FormatUint(b.Reward, 10),
 				pools[smallIndex].Name(),
-				strconv.FormatBool(allBlocks[smallIndex][0].Valid),
+				strconv.FormatBool(b.Valid),
+				b.Miner,
 			})
 		}
 

@@ -29,6 +29,7 @@ type blockJson struct {
 	Height uint64    `json:"block_number"`
 	Status int       `json:"status"`
 	Value  float64   `json:"value"`
+	Miner  string    `json:"miner"`
 }
 
 func New() *Pool {
@@ -84,6 +85,7 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 				Reward:    uint64(b.Value * 1000000000000),
 				Timestamp: b.Ts * 1000,
 				Valid:     b.Status != 1,
+				Miner:     b.Miner,
 			})
 		}
 		if b.Hash == t.id {

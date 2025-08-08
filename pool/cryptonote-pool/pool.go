@@ -16,6 +16,7 @@ type Pool struct {
 	throttler <-chan time.Time
 	name      string
 	apiUrl    string
+	kv        map[string]int
 }
 
 type pagingToken struct {
@@ -23,19 +24,21 @@ type pagingToken struct {
 	id     pool.Hash
 }
 
-type blockJson struct {
-	Ts     uint64    `json:"ts"`
-	Hash   pool.Hash `json:"hash"`
-	Height uint64    `json:"height"`
-	Valid  bool      `json:"valid"`
-	Value  uint64    `json:"value"`
-}
-
-func New(apiUrl, name string) *Pool {
+func New(apiUrl, name string, kv map[string]int) *Pool {
+	if kv == nil {
+		//default
+		kv = map[string]int{
+			"hash":     0,
+			"ts":       1,
+			"orphaned": 4,
+			"reward":   5,
+		}
+	}
 	return &Pool{
 		throttler: time.Tick(time.Second * 5), //One request every five seconds
 		name:      name,
 		apiUrl:    apiUrl,
+		kv:        kv,
 	}
 }
 
@@ -76,23 +79,50 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 
 	for i := 0; i < len(blockData); i += 2 {
 		pieces := strings.Split(blockData[i], ":")
+
 		if len(pieces) < 4 {
 			return nil, nil
 		}
-		if len(pieces) < 6 {
-			break
+
+		g := func(n string) string {
+			ii, ok := p.kv[n]
+			if ok && ii != -1 && len(pieces) > ii {
+				return pieces[ii]
+			}
+			return ""
 		}
-		hash, _ := pool.HashFromString(pieces[0])
-		ts, _ := strconv.ParseUint(pieces[1], 10, 0)
-		blockHeight, _ := strconv.ParseUint(blockData[i+1], 10, 0)
-		orphaned := pieces[4] != "0"
-		reward, _ := strconv.ParseUint(pieces[5], 10, 0)
+
+		var hash pool.Hash
+		var miner string
+		var ts, blockHeight, reward uint64
+		var orphaned bool
+		if v := g("hash"); v != "" {
+			hash, err = pool.HashFromString(v)
+			if err != nil {
+				break
+			}
+		}
+		if v := g("orphaned"); v != "" {
+			orphaned = v != "0"
+		}
+		if v := g("ts"); v != "" {
+			ts, _ = strconv.ParseUint(v, 10, 0)
+		}
+		if v := g("reward"); v != "" {
+			reward, _ = strconv.ParseUint(v, 10, 0)
+		}
+		if v := g("miner"); v != "" {
+			miner = v
+		}
+		blockHeight, _ = strconv.ParseUint(blockData[i+1], 10, 0)
+
 		blocks = append(blocks, pool.Block{
 			Id:        hash,
 			Height:    blockHeight,
 			Reward:    reward,
 			Timestamp: ts * 1000,
 			Valid:     orphaned,
+			Miner:     miner,
 		})
 	}
 

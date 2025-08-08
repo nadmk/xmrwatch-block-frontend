@@ -20,11 +20,12 @@ type pagingToken struct {
 }
 
 type blockJson struct {
-	Ts     uint64    `json:"ts"`
-	Hash   pool.Hash `json:"hash"`
-	Height uint64    `json:"height"`
-	Valid  bool      `json:"valid"`
-	Value  uint64    `json:"value"`
+	Ts      uint64    `json:"ts"`
+	Hash    pool.Hash `json:"hash"`
+	Height  uint64    `json:"height"`
+	Valid   bool      `json:"valid"`
+	Value   uint64    `json:"value"`
+	FoundBy string    `json:"foundBy"`
 }
 
 func New() *Pool {
@@ -80,6 +81,7 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 				Reward:    b.Value,
 				Timestamp: b.Ts,
 				Valid:     b.Valid,
+				Miner:     b.FoundBy,
 			})
 		}
 		if b.Hash == t.id {

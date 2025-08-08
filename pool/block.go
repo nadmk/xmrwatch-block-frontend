@@ -6,4 +6,5 @@ type Block struct {
 	Reward    uint64
 	Timestamp uint64
 	Valid     bool
+	Miner     string
 }

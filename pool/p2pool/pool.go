@@ -21,6 +21,7 @@ type blockJson struct {
 		Timestamp uint64    `json:"timestamp"`
 		Reward    uint64    `json:"reward"`
 	} `json:"main_block"`
+	MinerAddress string `json:"miner_address"`
 }
 
 func New(observerUrl string) *Pool {
@@ -65,6 +66,7 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 			Height:    b.MainBlock.Height,
 			Reward:    b.MainBlock.Reward,
 			Timestamp: b.MainBlock.Timestamp * 1000,
+			Miner:     b.MinerAddress,
 		})
 	}
 
