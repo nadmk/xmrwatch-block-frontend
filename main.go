@@ -50,7 +50,7 @@ func main() {
 		nodejs_pool.New("https://supportxmr.com/api", "supportxmr.com"),
 		nodejs_pool.New("https://api.c3pool.org", "c3pool.org"),
 		nodejs_pool.New("https://api.moneroocean.stream", "moneroocean.stream"),
-		nodejs_pool.New("https://api.skypool.xyz", "skypool.xyz"),
+		nodejs_pool.New("https://api.skypool.xyz", "skypool.org"),
 		nodejs_pool.New("https://np-api.monerod.org", "monerod.org"),
 		nodejs_pool.New("https://pool.xmr.pt/api", "pool.xmr.pt"),
 		nodejs_pool.New("https://bohemianpool.com/api", "bohemianpool.com"),
