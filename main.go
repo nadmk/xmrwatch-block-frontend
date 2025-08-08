@@ -13,6 +13,7 @@ import (
 	nodejs_pool "monero-blocks/pool/nodejs-pool"
 	"monero-blocks/pool/p2pool"
 	xmr_nanopool_org "monero-blocks/pool/xmr.nanopool.org"
+	xmr_solopool_org "monero-blocks/pool/xmr.solopool.org"
 	"os"
 	"slices"
 	"strconv"
@@ -56,11 +57,10 @@ func main() {
 		),
 		cryptonote_pool.New("https://monero.fairhash.org/api", "monero.fairhash.org", nil),
 
+		xmr_solopool_org.New(),
+
 		// TODO: pool.rplant.xyz
 		// https://pool.rplant.xyz/api2/poolminer2/monero/0/0
-
-		// TODO: xmr.solopool.org + miner attribution
-		// https://xmr.solopool.org/api/blocks
 
 		// TODO: mining-dutch.nl
 		// https://www.mining-dutch.nl/pools/monero.php?page=api&action=getdashboarddata
