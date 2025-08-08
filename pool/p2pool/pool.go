@@ -66,6 +66,7 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 			Height:    b.MainBlock.Height,
 			Reward:    b.MainBlock.Reward,
 			Timestamp: b.MainBlock.Timestamp * 1000,
+			Valid:     true,
 			Miner:     b.MinerAddress,
 		})
 	}

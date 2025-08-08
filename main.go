@@ -28,9 +28,23 @@ func main() {
 	flag.Parse()
 
 	pools := []pool.Pool{
+		// custom implementations
 		monero_hashvault_pro.New(),
 		xmr_nanopool_org.New(),
 		kryptex_com.New(),
+		xmr_solopool_org.New(),
+
+		// TODO: pool.rplant.xyz
+		// https://pool.rplant.xyz/api2/poolminer2/monero/0/0
+
+		// TODO: mining-dutch.nl
+		// https://www.mining-dutch.nl/pools/monero.php?page=api&action=getdashboarddata
+
+		// TODO: zergpool.com
+		// https://zergpool.com/api/blocks?pageIndex=0&pageSize=10&coin=XMR
+
+		// TODO: dxpool.com
+		// https://www.dxpool.com/api/pools/xmr/blocks?page_size=500&offset=0
 
 		// nodejs-pool based ones
 		nodejs_pool.New("https://supportxmr.com/api", "supportxmr.com"),
@@ -56,17 +70,6 @@ func main() {
 			map[string]int{"hash": 2, "ts": 3, "orphaned": 6, "reward": 7, "miner": 1},
 		),
 		cryptonote_pool.New("https://monero.fairhash.org/api", "monero.fairhash.org", nil),
-
-		xmr_solopool_org.New(),
-
-		// TODO: pool.rplant.xyz
-		// https://pool.rplant.xyz/api2/poolminer2/monero/0/0
-
-		// TODO: mining-dutch.nl
-		// https://www.mining-dutch.nl/pools/monero.php?page=api&action=getdashboarddata
-
-		// TODO: zergpool.com
-		// https://zergpool.com/api/blocks?pageIndex=0&pageSize=10&coin=XMR
 
 		// p2pool interfaces
 		// main
