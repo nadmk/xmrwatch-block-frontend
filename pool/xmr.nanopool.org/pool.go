@@ -80,10 +80,11 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 		}
 		if start {
 			blocks = append(blocks, pool.Block{
-				Id:        b.Hash,
-				Height:    b.Height,
-				Reward:    uint64(b.Value * 1000000000000),
-				Timestamp: b.Ts * 1000,
+				Id:     b.Hash,
+				Height: b.Height,
+				Reward: uint64(b.Value * 1000000000000),
+				// Nanopool 'date' is a unix timestamp in seconds already.
+				Timestamp: b.Ts,
 				Valid:     b.Status != 1,
 				Miner:     b.Miner,
 			})

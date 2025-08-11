@@ -1,0 +1,6 @@
+name = "monero-watch-web"
+compatibility_date = "2024-01-01"
+
+[vars]
+# If you deploy the static frontend only, point to your API base if needed
+# VITE_API_BASE = "https://your-backend.example.com"

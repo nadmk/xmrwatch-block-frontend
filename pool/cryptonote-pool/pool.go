@@ -117,12 +117,14 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 		blockHeight, _ = strconv.ParseUint(blockData[i+1], 10, 0)
 
 		blocks = append(blocks, pool.Block{
-			Id:        hash,
-			Height:    blockHeight,
-			Reward:    reward,
-			Timestamp: ts * 1000,
-			Valid:     orphaned,
-			Miner:     miner,
+			Id:     hash,
+			Height: blockHeight,
+			Reward: reward,
+			// API returns seconds.
+			Timestamp: ts,
+			// orphaned true means not valid; Valid should be !orphaned
+			Valid: !orphaned,
+			Miner: miner,
 		})
 	}
 

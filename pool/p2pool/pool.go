@@ -62,10 +62,11 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 
 	for _, b := range blockData {
 		blocks = append(blocks, pool.Block{
-			Id:        b.MainBlock.Id,
-			Height:    b.MainBlock.Height,
-			Reward:    b.MainBlock.Reward,
-			Timestamp: b.MainBlock.Timestamp * 1000,
+			Id:     b.MainBlock.Id,
+			Height: b.MainBlock.Height,
+			Reward: b.MainBlock.Reward,
+			// p2pool observer returns seconds.
+			Timestamp: b.MainBlock.Timestamp,
 			Valid:     true,
 			Miner:     b.MinerAddress,
 		})

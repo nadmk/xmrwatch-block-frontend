@@ -89,9 +89,10 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 				}
 				if start {
 					blocks = append(blocks, pool.Block{
-						Id:        b.Hash,
-						Height:    b.Height,
-						Reward:    b.Value,
+						Id:     b.Hash,
+						Height: b.Height,
+						Reward: b.Value,
+						// API returns seconds.
 						Timestamp: b.Ts,
 						Valid:     b.Valid,
 					})
@@ -121,9 +122,10 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 				}
 				if start {
 					blocks = append(blocks, pool.Block{
-						Id:        b.Hash,
-						Height:    b.Height,
-						Reward:    b.Value,
+						Id:     b.Hash,
+						Height: b.Height,
+						Reward: b.Value,
+						// API returns seconds.
 						Timestamp: b.Ts,
 						Valid:     b.Valid,
 					})
