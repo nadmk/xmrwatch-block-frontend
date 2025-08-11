@@ -177,6 +177,7 @@ func (a *appState) ownership(lastN int, sinceUnix uint64, onlyValid bool) []map[
 	heightsSeen := make(map[uint64]bool)
 	var prevHeight uint64
 	var havePrev bool
+	var prevTs uint64
 	for {
 		smallIndex := -1
 		smallValue := uint64(0)
@@ -197,24 +198,43 @@ func (a *appState) ownership(lastN int, sinceUnix uint64, onlyValid bool) []map[
 		idx[smallIndex]++
 		// Fill unknown gaps conservatively:
 		// - never below earliest known height across pools
-		// - do not synthesize unknowns for time-window (sinceUnix>0) ownership queries
-		if sinceUnix == 0 && havePrev && prevHeight > b.Height+1 {
-			for h := prevHeight - 1; h > b.Height; h-- {
-				if minKnown != 0 && h < minKnown {
-					break
+		// Gap handling
+		if havePrev && prevHeight > b.Height+1 {
+			if sinceUnix > 0 {
+				// Strict mode: count Unknown only if both endpoints are inside the window
+				bt := normalizeTimestamp(b.Timestamp)
+				if prevTs >= sinceUnix && bt >= sinceUnix {
+					for h := prevHeight - 1; h > b.Height; h-- {
+						if minKnown != 0 && h < minKnown {
+							break
+						}
+						if heightsSeen[h] {
+							continue
+						}
+						unknown++
+						total++
+						heightsSeen[h] = true
+					}
 				}
-				if heightsSeen[h] {
-					continue
+			} else {
+				// Last N mode: synthesize Unknowns, bounded by earliest known height
+				for h := prevHeight - 1; h > b.Height; h-- {
+					if minKnown != 0 && h < minKnown {
+						break
+					}
+					if heightsSeen[h] {
+						continue
+					}
+					unknown++
+					total++
+					heightsSeen[h] = true
+					if lastN > 0 && total >= lastN {
+						break
+					}
 				}
-				unknown++
-				total++
-				heightsSeen[h] = true
 				if lastN > 0 && total >= lastN {
 					break
 				}
-			}
-			if lastN > 0 && total >= lastN {
-				break
 			}
 		}
 		if heightsSeen[b.Height] {
@@ -226,6 +246,7 @@ func (a *appState) ownership(lastN int, sinceUnix uint64, onlyValid bool) []map[
 		heightsSeen[b.Height] = true
 		prevHeight = b.Height
 		havePrev = true
+	prevTs = normalizeTimestamp(b.Timestamp)
 		if sinceUnix == 0 && lastN > 0 && total >= lastN {
 			break
 		}
@@ -263,7 +284,7 @@ func max(a, b int) int {
 }
 
 func main() {
-	scanDownToHeight := flag.Uint64("height", 3475361, "Height at which scans will stop from the tip. Defaults to v15 upgrade.")
+	scanDownToHeight := flag.Uint64("height", 26888888, "Height at which scans will stop from the tip. Defaults to v15 upgrade.")
 	csvOutput := flag.String("output", "blocks.csv", "CSV blocks output file")
 	hideNotValid := flag.Bool("only-valid", false, "Do not output the blocks that are marked not valid by pools")
 	serve := flag.Bool("serve", false, "Run HTTP server instead of writing CSV")
@@ -630,6 +651,20 @@ func main() {
 
 		mux := http.NewServeMux()
 
+		// Global CORS wrapper (allow all). This applies to every route below.
+		corsAll := func(h http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "*")
+				if r.Method == http.MethodOptions {
+					w.WriteHeader(http.StatusNoContent)
+					return
+				}
+				h.ServeHTTP(w, r)
+			})
+		}
+
 		// CORS middleware wrapper for dev convenience
 		withCORS := func(h http.HandlerFunc) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {
@@ -769,12 +804,12 @@ func main() {
 				}()
 			}
 			log.Printf("Serving HTTPS on %s (frontend: %s)", *tlsAddr, absWeb)
-			if err := http.ListenAndServeTLS(*tlsAddr, *tlsCert, *tlsKey, mux); err != nil {
+			if err := http.ListenAndServeTLS(*tlsAddr, *tlsCert, *tlsKey, corsAll(mux)); err != nil {
 				log.Fatal(err)
 			}
 		} else {
 			log.Printf("Serving HTTP on %s (frontend: %s)", *addr, absWeb)
-			if err := http.ListenAndServe(*addr, mux); err != nil {
+			if err := http.ListenAndServe(*addr, corsAll(mux)); err != nil {
 				log.Fatal(err)
 			}
 		}

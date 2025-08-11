@@ -6,8 +6,7 @@ import OwnershipOverTime from '../components/OwnershipOverTime'
 import { Block, Ownership, fetchBlocks, fetchOwnership } from '../lib/api'
 
 export default function Dashboard() {
-  const [onlyValid, setOnlyValid] = useState(false)
-  const [period, setPeriod] = useState<'24h' | '7d' | '30d' | 'lastN'>('24h')
+  const [period, setPeriod] = useState<'24h' | 'lastN'>('24h')
   const [lastN, setLastN] = useState(1000)
   const [ownership, setOwnership] = useState<Ownership[] | null>(null)
   const [blocks, setBlocks] = useState<Block[]>([])
@@ -17,8 +16,6 @@ export default function Dashboard() {
     const now = Math.floor(Date.now() / 1000)
     switch (period) {
       case '24h': return now - 24 * 3600
-      case '7d': return now - 7 * 24 * 3600
-      case '30d': return now - 30 * 24 * 3600
       case 'lastN': return 0
     }
   }, [period])
@@ -27,8 +24,8 @@ export default function Dashboard() {
     let cancelled = false
     setLoading(true)
     Promise.all([
-      fetchOwnership(period === 'lastN' ? { lastN, onlyValid } : { since, onlyValid }),
-      fetchBlocks({ limit: 300, onlyValid, since }),
+      fetchOwnership(period === 'lastN' ? { lastN } : { since }),
+      fetchBlocks({ limit: 300, since }),
     ]).then(([own, blks]) => {
       if (cancelled) return
       setOwnership(own)
@@ -36,8 +33,8 @@ export default function Dashboard() {
     }).finally(() => setLoading(false))
     const t = setInterval(() => {
       Promise.all([
-        fetchOwnership(period === 'lastN' ? { lastN, onlyValid } : { since, onlyValid }),
-        fetchBlocks({ limit: 300, onlyValid, since }),
+        fetchOwnership(period === 'lastN' ? { lastN } : { since }),
+        fetchBlocks({ limit: 300, since }),
       ]).then(([own, blks]) => {
         if (cancelled) return
         setOwnership(own)
@@ -45,21 +42,15 @@ export default function Dashboard() {
       })
     }, 30000)
     return () => { cancelled = true; clearInterval(t) }
-  }, [onlyValid, period, lastN, since])
+  }, [period, lastN, since])
 
   return (
     <div className="max-w-7xl mx-auto p-4 space-y-4">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Monero Block Ownership</h1>
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={onlyValid} onChange={e => setOnlyValid(e.target.checked)} />
-            Only valid
-          </label>
-          <select className="bg-slate-900 border border-slate-700 rounded px-2 py-1" value={period} onChange={e => setPeriod(e.target.value as any)}>
+  <div className="flex items-center gap-3">
+          <select className="bg-slate-900 border border-slate-700 rounded px-2 py-1" value={period} onChange={e => setPeriod(e.target.value as '24h' | 'lastN')}>
             <option value="24h">24 hours</option>
-            <option value="7d">7 days</option>
-            <option value="30d">30 days</option>
             <option value="lastN">Last N blocks</option>
           </select>
           {period === 'lastN' && (
