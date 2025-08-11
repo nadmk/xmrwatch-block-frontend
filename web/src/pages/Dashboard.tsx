@@ -75,12 +75,12 @@ export default function Dashboard() {
         </Card>
         <Card>
           <h2 className="text-lg mb-2">Ownership over time</h2>
-          <OwnershipOverTime blocks={blocks} />
+          <OwnershipOverTime blocks={blocks} since={since} />
         </Card>
       </div>
       <Card>
         <h2 className="text-lg mb-2">Recent blocks ({blocks.length})</h2>
-        <BlocksTable blocks={blocks} />
+        <BlocksTable blocks={blocks} since={since} />
       </Card>
       {loading && <div className="text-slate-400">Refreshing…</div>}
       <footer className="pt-6 mt-6 border-t border-slate-800 text-sm text-slate-400">

@@ -22,6 +22,7 @@ import (
 	monero_hashvault_pro "monero-blocks/pool/monero.hashvault.pro"
 	nodejs_pool "monero-blocks/pool/nodejs-pool"
 	"monero-blocks/pool/p2pool"
+	rplant_xyz "monero-blocks/pool/rplant.xyz"
 	xmr_nanopool_org "monero-blocks/pool/xmr.nanopool.org"
 	xmr_solopool_org "monero-blocks/pool/xmr.solopool.org"
 )
@@ -66,6 +67,18 @@ func findIndexBlock(ss []pool.Block, pred func(pool.Block) bool) int {
 func (a *appState) latestCombined(limit int, onlyValid bool, since uint64) []map[string]any {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
+	// Establish the earliest height we reasonably know about across all pools
+	minKnown := uint64(0)
+	for i := range a.allBlocks {
+		if len(a.allBlocks[i]) == 0 {
+			continue
+		}
+		// find tail height (smallest) in this pool's slice (sorted desc)
+		h := a.allBlocks[i][len(a.allBlocks[i])-1].Height
+		if minKnown == 0 || h < minKnown {
+			minKnown = h
+		}
+	}
 	// Make a copy of first element iterators
 	idx := make([]int, len(a.allBlocks))
 	res := make([]map[string]any, 0, limit)
@@ -75,12 +88,12 @@ func (a *appState) latestCombined(limit int, onlyValid bool, since uint64) []map
 	for len(res) < limit {
 		smallIndex := -1
 		smallValue := uint64(0)
-	for i := range a.allBlocks {
+		for i := range a.allBlocks {
 			if idx[i] < len(a.allBlocks[i]) {
-		b := a.allBlocks[i][idx[i]]
-		tnorm := normalizeTimestamp(b.Timestamp)
+				b := a.allBlocks[i][idx[i]]
+				tnorm := normalizeTimestamp(b.Timestamp)
 				// honor filters for choosing candidate
-		if (since == 0 || tnorm >= since) && (!onlyValid || b.Valid) && b.Height >= smallValue {
+				if (since == 0 || tnorm >= since) && (!onlyValid || b.Valid) && b.Height >= smallValue {
 					smallValue = b.Height
 					smallIndex = i
 				}
@@ -91,9 +104,12 @@ func (a *appState) latestCombined(limit int, onlyValid bool, since uint64) []map
 		}
 		b := a.allBlocks[smallIndex][idx[smallIndex]]
 		idx[smallIndex]++
-		// Fill unknown gaps between prevHeight and current b.Height
+		// Fill unknown gaps between prevHeight and current b.Height, but never below earliest known height
 		if havePrev && prevHeight > b.Height+1 {
 			for h := prevHeight - 1; h > b.Height && len(res) < limit; h-- {
+				if minKnown != 0 && h < minKnown { // don't invent unknowns before we have any data
+					break
+				}
 				if heightsSeen[h] {
 					continue
 				}
@@ -145,6 +161,17 @@ func (a *appState) ownership(lastN int, sinceUnix uint64, onlyValid bool) []map[
 	stats := make([]stat, len(a.pools))
 	unknown := 0
 	total := 0
+	// Earliest known height boundary across all pools
+	minKnown := uint64(0)
+	for i := range a.allBlocks {
+		if len(a.allBlocks[i]) == 0 {
+			continue
+		}
+		h := a.allBlocks[i][len(a.allBlocks[i])-1].Height
+		if minKnown == 0 || h < minKnown {
+			minKnown = h
+		}
+	}
 	// Iterate across combined list but stop after lastN or time window
 	idx := make([]int, len(a.allBlocks))
 	heightsSeen := make(map[uint64]bool)
@@ -153,11 +180,11 @@ func (a *appState) ownership(lastN int, sinceUnix uint64, onlyValid bool) []map[
 	for {
 		smallIndex := -1
 		smallValue := uint64(0)
-	for i := range a.allBlocks {
+		for i := range a.allBlocks {
 			if idx[i] < len(a.allBlocks[i]) {
-		b := a.allBlocks[i][idx[i]]
-		tnorm := normalizeTimestamp(b.Timestamp)
-		if (sinceUnix == 0 || tnorm >= sinceUnix) && (!onlyValid || b.Valid) && b.Height >= smallValue {
+				b := a.allBlocks[i][idx[i]]
+				tnorm := normalizeTimestamp(b.Timestamp)
+				if (sinceUnix == 0 || tnorm >= sinceUnix) && (!onlyValid || b.Valid) && b.Height >= smallValue {
 					smallValue = b.Height
 					smallIndex = i
 				}
@@ -168,20 +195,25 @@ func (a *appState) ownership(lastN int, sinceUnix uint64, onlyValid bool) []map[
 		}
 		b := a.allBlocks[smallIndex][idx[smallIndex]]
 		idx[smallIndex]++
-		// Fill unknown gaps
-		if havePrev && prevHeight > b.Height+1 {
+		// Fill unknown gaps conservatively:
+		// - never below earliest known height across pools
+		// - do not synthesize unknowns for time-window (sinceUnix>0) ownership queries
+		if sinceUnix == 0 && havePrev && prevHeight > b.Height+1 {
 			for h := prevHeight - 1; h > b.Height; h-- {
+				if minKnown != 0 && h < minKnown {
+					break
+				}
 				if heightsSeen[h] {
 					continue
 				}
 				unknown++
 				total++
 				heightsSeen[h] = true
-				if sinceUnix == 0 && lastN > 0 && total >= lastN {
+				if lastN > 0 && total >= lastN {
 					break
 				}
 			}
-			if sinceUnix == 0 && lastN > 0 && total >= lastN {
+			if lastN > 0 && total >= lastN {
 				break
 			}
 		}
@@ -237,6 +269,11 @@ func main() {
 	serve := flag.Bool("serve", false, "Run HTTP server instead of writing CSV")
 	addr := flag.String("addr", ":8080", "Address for HTTP server in serve mode")
 	webDir := flag.String("web", "web/dist", "Directory from which to serve the frontend (in serve mode)")
+	// TLS options
+	tlsCert := flag.String("tls-cert", "", "Path to TLS certificate (PEM)")
+	tlsKey := flag.String("tls-key", "", "Path to TLS private key (PEM)")
+	tlsAddr := flag.String("tls-addr", ":443", "Address for HTTPS server (when --tls-cert and --tls-key are set)")
+	httpRedirect := flag.Bool("http-redirect", false, "If true and TLS enabled, start an HTTP server on --addr that redirects to HTTPS")
 
 	flag.Parse()
 
@@ -247,8 +284,8 @@ func main() {
 		kryptex_com.New(),
 		xmr_solopool_org.New(),
 
-		// TODO: pool.rplant.xyz
-		// https://pool.rplant.xyz/api2/poolminer2/monero/0/0
+		// rplant.xyz
+		rplant_xyz.New(),
 
 		// TODO: mining-dutch.nl
 		// https://www.mining-dutch.nl/pools/monero.php?page=api&action=getdashboarddata
@@ -333,11 +370,11 @@ func main() {
 					if err != nil {
 						continue
 					}
-						timestamp, err := strconv.ParseUint(r[2], 10, 64)
+					timestamp, err := strconv.ParseUint(r[2], 10, 64)
 					if err != nil {
 						continue
 					}
-						timestamp = normalizeTimestamp(timestamp)
+					timestamp = normalizeTimestamp(timestamp)
 					reward, err := strconv.ParseUint(r[3], 10, 64)
 					if err != nil {
 						continue
@@ -715,9 +752,31 @@ func main() {
 			}
 		}()
 
-		log.Printf("Serving on %s (frontend: %s)", *addr, absWeb)
-		if err := http.ListenAndServe(*addr, mux); err != nil {
-			log.Fatal(err)
+		// Start HTTPS if cert/key provided, otherwise HTTP only
+		if *tlsCert != "" && *tlsKey != "" {
+			if *httpRedirect {
+				go func() {
+					redir := http.NewServeMux()
+					redir.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+						// Build https URL preserving host and path
+						target := "https://" + r.Host + r.URL.RequestURI()
+						http.Redirect(w, r, target, http.StatusMovedPermanently)
+					})
+					log.Printf("HTTP redirect listening on %s -> %s", *addr, *tlsAddr)
+					if err := http.ListenAndServe(*addr, redir); err != nil {
+						log.Printf("HTTP redirect server stopped: %v", err)
+					}
+				}()
+			}
+			log.Printf("Serving HTTPS on %s (frontend: %s)", *tlsAddr, absWeb)
+			if err := http.ListenAndServeTLS(*tlsAddr, *tlsCert, *tlsKey, mux); err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			log.Printf("Serving HTTP on %s (frontend: %s)", *addr, absWeb)
+			if err := http.ListenAndServe(*addr, mux); err != nil {
+				log.Fatal(err)
+			}
 		}
 		return
 	}

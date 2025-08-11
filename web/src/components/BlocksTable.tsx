@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Block, fetchBlockHeader } from '../lib/api'
 
 function PoolBadge({ name }: { name: string }) {
@@ -9,7 +9,7 @@ function PoolBadge({ name }: { name: string }) {
   return <span className={`px-2 py-0.5 text-xs rounded-full ${palette[i]} text-white`}>{name}</span>
 }
 
-export default function BlocksTable({ blocks }: { blocks: Block[] }) {
+export default function BlocksTable({ blocks, since }: { blocks: Block[]; since?: number }) {
   const [hdr, setHdr] = useState<Record<number, { timestamp: number; reward: number; hash: string }>>({})
 
   useEffect(() => {
@@ -32,6 +32,13 @@ export default function BlocksTable({ blocks }: { blocks: Block[] }) {
     run()
     return () => { cancelled = true }
   }, [blocks])
+  const rows = useMemo(() => {
+    if (!since) return blocks
+    return blocks.filter(b => {
+      const effTs = b.timestamp || hdr[b.height]?.timestamp || 0
+      return effTs && effTs >= since
+    })
+  }, [blocks, hdr, since])
   return (
     <div className="overflow-auto">
       <table className="min-w-full text-sm">
@@ -46,7 +53,7 @@ export default function BlocksTable({ blocks }: { blocks: Block[] }) {
           </tr>
         </thead>
         <tbody>
-          {blocks.map(b => {
+          {rows.map(b => {
             const effTs = b.timestamp || hdr[b.height]?.timestamp || 0
             const effRw = b.reward || hdr[b.height]?.reward || 0
             return (

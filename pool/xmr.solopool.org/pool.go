@@ -5,7 +5,7 @@ import (
 	"io"
 	"monero-blocks/pool"
 	"net/http"
-	"slices"
+	"sort"
 	"time"
 )
 
@@ -64,7 +64,8 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 			Id:        b.Hash,
 			Height:    b.Height,
 			Reward:    b.Value / 1000000,
-			Timestamp: b.Ts * 1000,
+			// API returns seconds; keep seconds
+			Timestamp: b.Ts,
 			Valid:     !b.Orphaned,
 			Miner:     b.Miner,
 		})
@@ -86,9 +87,7 @@ func (p *Pool) GetBlocks(token pool.Token) ([]pool.Block, pool.Token) {
 		return nil, nil
 	}
 
-	slices.SortFunc(blocks, func(a, b pool.Block) int {
-		return int(b.Height) - int(a.Height)
-	})
+	sort.Slice(blocks, func(i, j int) bool { return blocks[i].Height > blocks[j].Height })
 
 	return blocks, nil
 }

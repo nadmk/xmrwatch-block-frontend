@@ -7,7 +7,7 @@ function bucketTs(ts: number, stepSec: number) {
   return Math.floor(ts / stepSec) * stepSec
 }
 
-export default function OwnershipOverTime({ blocks, step = 3600 }: { blocks: Block[]; step?: number }) {
+export default function OwnershipOverTime({ blocks, step = 3600, since }: { blocks: Block[]; step?: number; since?: number }) {
   const ref = useRef<HTMLDivElement>(null)
   const chartRef = useRef<echarts.ECharts | null>(null)
   const [enriched, setEnriched] = useState<Block[]>(blocks)
@@ -55,6 +55,7 @@ export default function OwnershipOverTime({ blocks, step = 3600 }: { blocks: Blo
     const timesSet = new Set<number>()
     for (const b of enriched) {
       const ts = b.timestamp || 0
+      if (since && (!ts || ts < since)) continue
       const t = bucketTs(ts, step)
       timesSet.add(t)
       if (!byPool[b.pool]) byPool[b.pool] = {}
@@ -83,7 +84,7 @@ export default function OwnershipOverTime({ blocks, step = 3600 }: { blocks: Blo
       xAxis: {
         type: 'category',
         boundaryGap: false,
-        data: times.map(t => t ? new Date(t * 1000).toLocaleString() : 'Unknown time'),
+        data: times.map((t: number) => (t ? new Date(t * 1000).toLocaleString() : 'Unknown time')),
         axisLabel: { color: '#94a3b8' },
         axisLine: { lineStyle: { color: '#334155' } },
       },
